@@ -19,7 +19,6 @@ It keeps the normal `sm2` command-line workflow, but puts the day-to-day actions
 
 ## Requirements
 
-- Go, matching the version in [go.mod](go.mod).
 - `sm2` installed and available on your `PATH`.
 - A configured `sm2` workspace, including `service-manager-config`.
 
@@ -29,26 +28,30 @@ Check your `sm2` installation with:
 sm2 --diagnostic
 ```
 
-## Run
+## Install
 
-From this repository:
+### Homebrew (recommended)
 
 ```sh
-go run .
+brew install sunmingdh/lazysm2/lazysm2
 ```
 
-Build a local binary:
+### Download a binary
+
+Download the latest binary for your platform from the [Releases](https://github.com/sunmingdh/lazysm2/releases) page, extract it, and move it somewhere on your `PATH`:
 
 ```sh
-go build -o lazysm2 .
-./lazysm2
+# Example for macOS arm64
+tar -xzf lazysm2_darwin_arm64.tar.gz
+mv lazysm2 /usr/local/bin/
 ```
 
-Install from this repository:
+### Install from source
+
+Requires Go (see [go.mod](go.mod) for the required version).
 
 ```sh
-go install
-lazysm2
+go install github.com/sunmingdh/lazysm2@latest
 ```
 
 The binary is installed to `$(go env GOPATH)/bin`; make sure that directory is on your `PATH`.
@@ -107,12 +110,18 @@ Starts are run online when a VPN-like network interface is detected. If no VPN i
 To force offline starts regardless of VPN state:
 
 ```sh
-START_SERVICE_OFFLINE=true go run .
+START_SERVICE_OFFLINE=true lazysm2
 ```
 
 Truthy values are `1`, `true`, `yes`, `on`, and `y`.
 
 ## Development
+
+Run the app without building a binary:
+
+```sh
+go run .
+```
 
 Run the test suite:
 
