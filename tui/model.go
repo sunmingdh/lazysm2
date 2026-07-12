@@ -6,6 +6,7 @@ import (
 
 	"lazysm2/sm2"
 
+	"github.com/charmbracelet/bubbles/textinput"
 	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
@@ -132,12 +133,12 @@ type model struct {
 	filters     map[panel]string
 	filtering   bool
 
-	vpActive   bool
-	vpRestart  bool // true when R was pressed (restart), false when S (start)
-	vpField    int  // 0 = version, 1 = port
-	vpService  string
-	vpVersion  string
-	vpPort     string
+	vpActive        bool
+	vpRestart       bool // true when R was pressed (restart), false when S (start)
+	vpField         int  // 0 = version, 1 = port
+	vpService       string
+	vpVersionInput  textinput.Model
+	vpPortInput     textinput.Model
 
 	statusMessage  string
 	popup          popupState
@@ -452,13 +453,20 @@ func (m model) selectedService() *sm2.Service {
 	return nil
 }
 
+func newVPInput(placeholder string) textinput.Model {
+	ti := textinput.New()
+	ti.Placeholder = placeholder
+	ti.CharLimit = 64
+	return ti
+}
+
 func (m *model) clearVPInput() {
 	m.vpActive = false
 	m.vpRestart = false
 	m.vpField = 0
 	m.vpService = ""
-	m.vpVersion = ""
-	m.vpPort = ""
+	m.vpVersionInput.Blur()
+	m.vpPortInput.Blur()
 }
 
 func (m model) updateVPInput(msg tea.KeyMsg) (model, tea.Cmd) {
@@ -471,9 +479,17 @@ func (m model) updateVPInput(msg tea.KeyMsg) (model, tea.Cmd) {
 		return m, nil
 	case "tab":
 		m.vpField = 1 - m.vpField
+		if m.vpField == 0 {
+			m.vpVersionInput.Focus()
+			m.vpPortInput.Blur()
+		} else {
+			m.vpPortInput.Focus()
+			m.vpVersionInput.Blur()
+		}
 		return m, nil
 	case "enter":
-		name, version, port, restart := m.vpService, m.vpVersion, m.vpPort, m.vpRestart
+		version, port, restart := m.vpVersionInput.Value(), m.vpPortInput.Value(), m.vpRestart
+		name := m.vpService
 		m.clearVPInput()
 		if name != "" {
 			target := name
@@ -494,26 +510,14 @@ func (m model) updateVPInput(msg tea.KeyMsg) (model, tea.Cmd) {
 			return m, startServiceWithVersionAndPortCmd(m.sm2, m.actionSession, name, version, port)
 		}
 		return m, nil
-	case "backspace", "ctrl+h":
-		if m.vpField == 0 {
-			if runes := []rune(m.vpVersion); len(runes) > 0 {
-				m.vpVersion = string(runes[:len(runes)-1])
-			}
-		} else {
-			if runes := []rune(m.vpPort); len(runes) > 0 {
-				m.vpPort = string(runes[:len(runes)-1])
-			}
-		}
-		return m, nil
 	}
-	if msg.Type == tea.KeyRunes {
-		if m.vpField == 0 {
-			m.vpVersion += string(msg.Runes)
-		} else {
-			m.vpPort += string(msg.Runes)
-		}
+	var cmd tea.Cmd
+	if m.vpField == 0 {
+		m.vpVersionInput, cmd = m.vpVersionInput.Update(msg)
+	} else {
+		m.vpPortInput, cmd = m.vpPortInput.Update(msg)
 	}
-	return m, nil
+	return m, cmd
 }
 
 // computePanelGeometry derives the panel positions from the current terminal
@@ -756,8 +760,11 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.vpRestart = false
 				m.vpField = 0
 				m.vpService = svc.Name
-				m.vpVersion = svc.Version
-				m.vpPort = svc.Port
+				m.vpVersionInput = newVPInput("version")
+				m.vpVersionInput.SetValue(svc.Version)
+				m.vpVersionInput.Focus()
+				m.vpPortInput = newVPInput("port")
+				m.vpPortInput.SetValue(svc.Port)
 				return m, nil
 			}
 		case "R":
@@ -767,8 +774,11 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.vpRestart = true
 				m.vpField = 0
 				m.vpService = svc.Name
-				m.vpVersion = svc.Version
-				m.vpPort = svc.Port
+				m.vpVersionInput = newVPInput("version")
+				m.vpVersionInput.SetValue(svc.Version)
+				m.vpVersionInput.Focus()
+				m.vpPortInput = newVPInput("port")
+				m.vpPortInput.SetValue(svc.Port)
 				return m, nil
 			}
 		case "x":

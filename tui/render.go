@@ -409,13 +409,7 @@ func (m model) baseView() string {
 	header := titleStyle.Render("Service Manager") + modeBadge + " | " + m.statusMessage
 	var footer string
 	if m.vpActive {
-		versionLabel := fmt.Sprintf("Version: %s", m.vpVersion)
-		portLabel := fmt.Sprintf("  Port: %s", m.vpPort)
-		if m.vpField == 0 {
-			footer = titleStyle.Render(versionLabel+"█") + portLabel + helpStyle.Render("   Tab · Enter · Esc")
-		} else {
-			footer = versionLabel + titleStyle.Render(portLabel+"█") + helpStyle.Render("   Tab · Enter · Esc")
-		}
+		footer = "Version: " + m.vpVersionInput.View() + "   Port: " + m.vpPortInput.View() + helpStyle.Render("   Tab · Enter · Esc")
 	} else {
 		footer = helpStyle.Render(m.footerHelp())
 	}

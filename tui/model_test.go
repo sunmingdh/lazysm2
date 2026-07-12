@@ -593,11 +593,11 @@ func TestVersionKeyEntersInputMode(t *testing.T) {
 	if got.vpService != "SERVICE-A" {
 		t.Fatalf("vpService = %q, want SERVICE-A", got.vpService)
 	}
-	if got.vpVersion != "1.0.0" {
-		t.Fatalf("vpVersion = %q, want 1.0.0 (pre-filled from service)", got.vpVersion)
+	if got.vpVersionInput.Value() != "1.0.0" {
+		t.Fatalf("vpVersionInput = %q, want 1.0.0 (pre-filled from service)", got.vpVersionInput.Value())
 	}
-	if got.vpPort != "8001" {
-		t.Fatalf("vpPort = %q, want 8001 (pre-filled from service)", got.vpPort)
+	if got.vpPortInput.Value() != "8001" {
+		t.Fatalf("vpPortInput = %q, want 8001 (pre-filled from service)", got.vpPortInput.Value())
 	}
 }
 
@@ -606,16 +606,17 @@ func TestVersionInputTypingUpdatesVersionField(t *testing.T) {
 	m.activePanel = runningPanel
 	m.vpActive = true
 	m.vpService = "SERVICE-A"
-	m.vpVersion = ""
-	m.vpPort = ""
+	m.vpVersionInput = newVPInput("version")
+	m.vpVersionInput.Focus()
+	m.vpPortInput = newVPInput("port")
 
 	updated, _ := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("1")})
 	updated, _ = updated.(model).Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune(".")})
 	updated, _ = updated.(model).Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("2")})
 	got := updated.(model)
 
-	if got.vpVersion != "1.2" {
-		t.Fatalf("vpVersion = %q, want 1.2", got.vpVersion)
+	if got.vpVersionInput.Value() != "1.2" {
+		t.Fatalf("vpVersionInput = %q, want 1.2", got.vpVersionInput.Value())
 	}
 }
 
@@ -623,8 +624,11 @@ func TestVersionInputTabSwitchesToPortField(t *testing.T) {
 	m := testModel()
 	m.vpActive = true
 	m.vpService = "SERVICE-A"
-	m.vpVersion = "1.2.3"
-	m.vpPort = "8080"
+	m.vpVersionInput = newVPInput("version")
+	m.vpVersionInput.SetValue("1.2.3")
+	m.vpVersionInput.Focus()
+	m.vpPortInput = newVPInput("port")
+	m.vpPortInput.SetValue("8080")
 	m.vpField = 0
 
 	updated, _ := m.Update(tea.KeyMsg{Type: tea.KeyTab})
@@ -636,8 +640,8 @@ func TestVersionInputTabSwitchesToPortField(t *testing.T) {
 
 	updated, _ = got.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("9")})
 	got = updated.(model)
-	if got.vpPort != "80809" {
-		t.Fatalf("vpPort = %q, want 80809 after typing on port field", got.vpPort)
+	if got.vpPortInput.Value() != "80809" {
+		t.Fatalf("vpPortInput = %q, want 80809 after typing on port field", got.vpPortInput.Value())
 	}
 }
 
@@ -645,8 +649,10 @@ func TestVersionInputEscCancels(t *testing.T) {
 	m := testModel()
 	m.vpActive = true
 	m.vpService = "SERVICE-A"
-	m.vpVersion = "1.2"
-	m.vpPort = "8080"
+	m.vpVersionInput = newVPInput("version")
+	m.vpVersionInput.SetValue("1.2")
+	m.vpPortInput = newVPInput("port")
+	m.vpPortInput.SetValue("8080")
 
 	updated, _ := m.Update(tea.KeyMsg{Type: tea.KeyEsc})
 	got := updated.(model)
@@ -654,8 +660,8 @@ func TestVersionInputEscCancels(t *testing.T) {
 	if got.vpActive {
 		t.Fatal("expected vpActive to be false after Esc")
 	}
-	if got.vpVersion != "" || got.vpPort != "" || got.vpService != "" {
-		t.Fatal("expected vp state to be cleared after Esc")
+	if got.vpService != "" {
+		t.Fatalf("expected vpService to be cleared after Esc, got %q", got.vpService)
 	}
 }
 
@@ -663,8 +669,11 @@ func TestVersionInputEnterStartsService(t *testing.T) {
 	m := testModel()
 	m.vpActive = true
 	m.vpService = "SERVICE-A"
-	m.vpVersion = "1.2.3"
-	m.vpPort = "9000"
+	m.vpVersionInput = newVPInput("version")
+	m.vpVersionInput.SetValue("1.2.3")
+	m.vpVersionInput.Focus()
+	m.vpPortInput = newVPInput("port")
+	m.vpPortInput.SetValue("9000")
 
 	updated, cmd := m.Update(tea.KeyMsg{Type: tea.KeyEnter})
 	got := updated.(model)
@@ -699,11 +708,11 @@ func TestCapitalRKeyEntersRestartInputMode(t *testing.T) {
 	if got.vpService != "SERVICE-A" {
 		t.Fatalf("vpService = %q, want SERVICE-A", got.vpService)
 	}
-	if got.vpVersion != "1.0.0" {
-		t.Fatalf("vpVersion = %q, want 1.0.0 (pre-filled from service)", got.vpVersion)
+	if got.vpVersionInput.Value() != "1.0.0" {
+		t.Fatalf("vpVersionInput = %q, want 1.0.0 (pre-filled from service)", got.vpVersionInput.Value())
 	}
-	if got.vpPort != "8001" {
-		t.Fatalf("vpPort = %q, want 8001 (pre-filled from service)", got.vpPort)
+	if got.vpPortInput.Value() != "8001" {
+		t.Fatalf("vpPortInput = %q, want 8001 (pre-filled from service)", got.vpPortInput.Value())
 	}
 }
 
@@ -712,8 +721,11 @@ func TestVersionInputEnterRestartsServiceWhenVpRestart(t *testing.T) {
 	m.vpActive = true
 	m.vpRestart = true
 	m.vpService = "SERVICE-A"
-	m.vpVersion = "1.2.3"
-	m.vpPort = "9000"
+	m.vpVersionInput = newVPInput("version")
+	m.vpVersionInput.SetValue("1.2.3")
+	m.vpVersionInput.Focus()
+	m.vpPortInput = newVPInput("port")
+	m.vpPortInput.SetValue("9000")
 
 	updated, cmd := m.Update(tea.KeyMsg{Type: tea.KeyEnter})
 	got := updated.(model)
