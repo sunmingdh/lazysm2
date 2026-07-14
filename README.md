@@ -30,31 +30,32 @@ sm2 --diagnostic
 
 ## Install
 
-### Homebrew (recommended)
+### macOS
+
+**Homebrew (recommended):**
 
 ```sh
 brew install sunmingdh/lazysm2/lazysm2
 ```
 
-### Download a binary
-
-Download the latest binary for your platform from the [Releases](https://github.com/sunmingdh/lazysm2/releases) page, extract it, and move it somewhere on your `PATH`:
+**Install script:**
 
 ```sh
-# Example for macOS arm64
-tar -xzf lazysm2_darwin_arm64.tar.gz
-mv lazysm2 /usr/local/bin/
+curl -fsSL https://raw.githubusercontent.com/sunmingdh/lazysm2/main/install.sh | sh
 ```
 
-### Install from source
-
-Requires Go (see [go.mod](go.mod) for the required version).
+### Linux
 
 ```sh
-go install github.com/sunmingdh/lazysm2@latest
+curl -fsSL https://raw.githubusercontent.com/sunmingdh/lazysm2/main/install.sh | sh
 ```
 
-The binary is installed to `$(go env GOPATH)/bin`; make sure that directory is on your `PATH`.
+The script detects your architecture, downloads the latest binary from GitHub Releases, and installs it to `~/.local/bin`. If that directory is not on your `PATH`, the script will print the line to add to your shell profile.
+
+### Windows
+
+Download the latest `.zip` from the [Releases](https://github.com/sunmingdh/lazysm2/releases) page, extract it, and move `lazysm2.exe` somewhere on your `PATH`.
+
 
 ## How It Works
 
