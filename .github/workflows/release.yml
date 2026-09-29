@@ -2,11 +2,18 @@ name: Release
 
 on:
   push:
+    branches:
+      - main
     tags:
       - 'v*'
 
 permissions:
   contents: write
+
+# Serialise releases so two quick pushes to main can't pick the same version.
+concurrency:
+  group: release
+  cancel-in-progress: false
 
 jobs:
   release:
@@ -16,11 +23,35 @@ jobs:
         with:
           fetch-depth: 0
 
+      # On a push to main, bump the patch version of the latest v* tag and push
+      # the new tag. Tags pushed with GITHUB_TOKEN don't trigger workflows, so
+      # the release runs in this same job rather than a second tag-triggered run.
+      # If HEAD already has a v* tag (pushed by hand), the tag-triggered run
+      # releases it, so this run is skipped.
+      - name: Tag next version
+        id: tag
+        if: github.ref_type == 'branch'
+        run: |
+          if git describe --tags --exact-match --match 'v*' HEAD >/dev/null 2>&1; then
+            echo "HEAD is already tagged, leaving the release to the tag run"
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          latest=$(git tag --list 'v*' --sort=-v:refname | head -n1)
+          latest=${latest:-v0.0.0}
+          IFS=. read -r major minor patch <<< "${latest#v}"
+          next="v${major}.${minor}.$((patch + 1))"
+          echo "Tagging $next (previous: $latest)"
+          git tag "$next"
+          git push origin "$next"
+
       - uses: actions/setup-go@v5
+        if: steps.tag.outputs.skip != 'true'
         with:
           go-version-file: go.mod
 
       - uses: goreleaser/goreleaser-action@v6
+        if: steps.tag.outputs.skip != 'true'
         with:
           version: latest
           args: release --clean
