@@ -104,6 +104,12 @@ The log is written to:
 - **macOS**: `~/Library/Caches/lazysm2/lazysm2.log`
 - **Linux**: `~/.cache/lazysm2/lazysm2.log`
 
+## Version
+
+```sh
+lazysm2 --version
+```
+
 ## Start Mode
 
 Starts are run online when a VPN-like network interface is detected. If no VPN interface is detected, `lazysm2` adds `--offline` to `sm2 --start`.

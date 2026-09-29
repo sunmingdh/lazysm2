@@ -5,11 +5,25 @@ import (
 	"io"
 	"log"
 	"os"
+	"runtime/debug"
+	"strings"
 
 	"lazysm2/tui"
 )
 
+// Set by GoReleaser's default ldflags (-X main.version=... -X main.commit=...).
+var (
+	version = "dev"
+	commit  = "none"
+)
+
 func main() {
+	if len(os.Args) > 1 && (os.Args[1] == "--version" || os.Args[1] == "-v") {
+		fmt.Println(versionString())
+		return
+	}
+	tui.Version = displayVersion()
+
 	debugLog := len(os.Args) > 1 && os.Args[1] == "--debug-log"
 
 	var logFile *os.File
@@ -29,6 +43,33 @@ func main() {
 		log.Fatalf("Error running UI: %v", err)
 	}
 	fmt.Println("lazysm2 has shut down.")
+}
+
+// displayVersion returns the release version as "vX.Y.Z", falling back to the
+// module version for binaries built with `go install ...@vX.Y.Z`, or "dev".
+func displayVersion() string {
+	v := version
+	if v == "dev" {
+		if info, ok := debug.ReadBuildInfo(); ok && info.Main.Version != "" && info.Main.Version != "(devel)" {
+			v = info.Main.Version
+		}
+	}
+	if v == "dev" {
+		return v
+	}
+	return "v" + strings.TrimPrefix(v, "v")
+}
+
+// versionString is the --version output, e.g. "lazysm2 v0.1.3 (00a9d67)".
+func versionString() string {
+	v, c := displayVersion(), commit
+	if c == "none" {
+		return "lazysm2 " + v
+	}
+	if len(c) > 7 {
+		c = c[:7]
+	}
+	return fmt.Sprintf("lazysm2 %s (%s)", v, c)
 }
 
 func setupLogging() (*os.File, error) {

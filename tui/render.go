@@ -406,7 +406,14 @@ func (m model) baseView() string {
 		modeBadge = " " + modeStyle.Render("["+modeLabel+"]")
 	}
 
-	header := titleStyle.Render("Service Manager") + modeBadge + " | " + m.statusMessage
+	header := titleStyle.Render("Service Manager")
+	if Version != "" {
+		header += " " + helpStyle.Render(Version)
+	}
+	header += modeBadge
+	if m.statusMessage != "" {
+		header += " | " + m.statusMessage
+	}
 	var footer string
 	if m.vpActive {
 		footer = "Version: " + m.vpVersionInput.View() + "   Port: " + m.vpPortInput.View() + helpStyle.Render("   Tab · Enter · Esc")

@@ -833,10 +833,9 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case statusRefreshedMsg:
 		m.status = msg.status
 		m.updateServiceLists()
+		// Keep the last action's message (e.g. "'X' started."); only surface warnings.
 		if msg.warning != "" {
-			m.statusMessage = errorStyle.Render(fmt.Sprintf("Service status refreshed. %s", msg.warning))
-		} else {
-			m.statusMessage = "Service status refreshed."
+			m.statusMessage = errorStyle.Render(msg.warning)
 		}
 		m.clampCursors()
 		return m.loadSelectedServiceDebug()
