@@ -85,14 +85,16 @@ func startProfileCmd(client sm2Client, session int, profileName string, services
 }
 
 func startServiceStream(session int, name, verb, pastVerb string, formatLine func(string) string, run func(func(string)) (string, error)) tea.Msg {
-	lines := make(chan string)
+	lines := make(chan streamLine)
 	done := make(chan actionOutputMsg, 1)
 	go func() {
 		output, err := run(func(line string) {
+			// Count cursor-up redraws before formatLine strips the escape codes.
+			up := cursorUpCount(line)
 			if formatLine != nil {
 				line = formatLine(line)
 			}
-			lines <- line
+			lines <- streamLine{text: line, up: up}
 		})
 		close(lines)
 		done <- actionOutputMsg{
@@ -114,13 +116,13 @@ func startServiceStream(session int, name, verb, pastVerb string, formatLine fun
 	}
 }
 
-func waitForActionLine(session int, name, verb string, lines <-chan string) tea.Cmd {
+func waitForActionLine(session int, name, verb string, lines <-chan streamLine) tea.Cmd {
 	return func() tea.Msg {
 		line, ok := <-lines
 		if !ok {
 			return actionStreamClosedMsg{session: session}
 		}
-		return actionStreamLineMsg{session: session, name: name, verb: verb, line: line, lines: lines}
+		return actionStreamLineMsg{session: session, name: name, verb: verb, line: line.text, up: line.up, lines: lines}
 	}
 }
 

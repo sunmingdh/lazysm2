@@ -2,6 +2,7 @@ package tui
 
 import (
 	"fmt"
+	"strconv"
 	"strings"
 )
 
@@ -25,12 +26,60 @@ func actionOutputContent(msg actionOutputMsg) string {
 	return output
 }
 
+// cleanCommandOutput cleans each line and replays cursor-up redraws (as used by
+// sm2's progress bars) so each redrawn frame replaces the previous one.
 func cleanCommandOutput(output string) string {
-	lines := strings.Split(output, "\n")
-	for i, line := range lines {
-		lines[i] = cleanCommandOutputLine(line)
+	var lines []string
+	for _, line := range strings.Split(output, "\n") {
+		up := min(cursorUpCount(line), len(lines))
+		lines = append(lines[:len(lines)-up], cleanCommandOutputLine(line))
 	}
 	return strings.Join(lines, "\n")
+}
+
+// cursorUpCount returns how many lines the leading escape sequences of line
+// move the cursor up. sm2 redraws its progress bars by prefixing each frame
+// with "\033[F\033[2K\r" once per previously drawn line.
+func cursorUpCount(line string) int {
+	up := 0
+	for len(line) > 0 {
+		if line[0] == '\r' {
+			line = line[1:]
+			continue
+		}
+		if !strings.HasPrefix(line, "\x1b[") {
+			break
+		}
+		// CSI sequence: parameter bytes then a final byte in '@'..'~'.
+		end := 2
+		for end < len(line) && (line[end] < '@' || line[end] > '~') {
+			end++
+		}
+		if end == len(line) {
+			break
+		}
+		if final := line[end]; final == 'A' || final == 'F' {
+			n, err := strconv.Atoi(line[2:end])
+			if err != nil || n < 1 {
+				n = 1
+			}
+			up += n
+		}
+		line = line[end+1:]
+	}
+	return up
+}
+
+// dropLastLines removes the last n newline-separated lines from s.
+func dropLastLines(s string, n int) string {
+	for ; n > 0; n-- {
+		idx := strings.LastIndexByte(s, '\n')
+		if idx < 0 {
+			return ""
+		}
+		s = s[:idx]
+	}
+	return s
 }
 
 // capLines returns s with all but the last max newline-terminated lines removed.

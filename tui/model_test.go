@@ -274,7 +274,7 @@ func TestActionStreamLineAppendsToPopup(t *testing.T) {
 		name:    "SERVICE-A",
 		verb:    "Starting",
 		line:    "Downloading dependencies",
-		lines:   make(chan string),
+		lines:   make(chan streamLine),
 	})
 	got := updated.(model)
 
@@ -1017,4 +1017,85 @@ func TestOccupiedPortsAreNotShownAsStoppedServices(t *testing.T) {
 	if len(m.stoppedServices) != 0 {
 		t.Fatalf("stopped services count = %d, want 0", len(m.stoppedServices))
 	}
+}
+
+func TestCursorUpCount(t *testing.T) {
+	cases := map[string]int{
+		"plain line":                         0,
+		"\x1b[F\x1b[2K\r service-a [==] 10%": 1,
+		"\x1b[F\x1b[2K\r\x1b[F\x1b[2K\r svc": 2,
+		"\x1b[3A\r svc":                      3,
+		"\x1b[31mred\x1b[0m":                 0,
+		"text \x1b[F not at start":           0,
+	}
+	for line, want := range cases {
+		if got := cursorUpCount(line); got != want {
+			t.Errorf("cursorUpCount(%q) = %d, want %d", line, got, want)
+		}
+	}
+}
+
+func TestCleanCommandOutputReplaysProgressRedraws(t *testing.T) {
+	redraw := "\x1b[F\x1b[2K\r"
+	output := " a [==   ][ 10%] Download\n" +
+		redraw + " a [==== ][ 50%] Download\n" +
+		redraw + " a [=====][100%] Done\n"
+
+	want := " a [=====][100%] Done\n"
+	if got := cleanCommandOutput(output); got != want {
+		t.Fatalf("cleanCommandOutput() = %q, want %q", got, want)
+	}
+}
+
+func TestActionStreamRedrawsReplacePopupLinesPerService(t *testing.T) {
+	m := testModel()
+	m.actionSession = 1
+	m.showPopup(actionOutputPopup, "Starting: PROFILE-X", "Starting 'PROFILE-X'...")
+
+	// Mimics startProfileCmd: a header per service, then sm2 progress frames
+	// where each frame after the first moves up over the previous one.
+	stream := []streamLine{
+		{text: "=== Starting A ==="},
+		{text: " A [==   ] Download"},
+		{text: " A [=====] Done", up: 1},
+		{text: "=== Starting B ==="},
+		{text: " B [==   ] Download"},
+		{text: " B [=====] Done", up: 1},
+	}
+	m = streamLines(m, stream)
+
+	want := "Starting 'PROFILE-X'...\n" +
+		"=== Starting A ===\n A [=====] Done\n" +
+		"=== Starting B ===\n B [=====] Done"
+	if m.popup.content != want {
+		t.Fatalf("popup content = %q, want %q", m.popup.content, want)
+	}
+}
+
+func TestActionStreamRedrawNeverRemovesTextBeforeStream(t *testing.T) {
+	m := testModel()
+	m.actionSession = 1
+	m.showPopup(actionOutputPopup, "Starting: SERVICE-A", "Starting 'SERVICE-A'...")
+
+	m = streamLines(m, []streamLine{{text: "first"}, {text: "second", up: 5}})
+
+	want := "Starting 'SERVICE-A'...\nsecond"
+	if m.popup.content != want {
+		t.Fatalf("popup content = %q, want %q", m.popup.content, want)
+	}
+}
+
+func streamLines(m model, lines []streamLine) model {
+	for _, line := range lines {
+		updated, _ := m.Update(actionStreamLineMsg{
+			session: 1,
+			name:    "TARGET",
+			verb:    "Starting",
+			line:    line.text,
+			up:      line.up,
+			lines:   make(chan streamLine),
+		})
+		m = updated.(model)
+	}
+	return m
 }

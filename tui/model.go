@@ -68,15 +68,22 @@ type actionStreamStartedMsg struct {
 	name     string
 	verb     string
 	pastVerb string
-	lines    <-chan string
+	lines    <-chan streamLine
 	done     <-chan actionOutputMsg
+}
+// streamLine is one line of streamed command output. up is the number of
+// previously emitted lines the line redraws over (terminal cursor-up).
+type streamLine struct {
+	text string
+	up   int
 }
 type actionStreamLineMsg struct {
 	session int
 	name    string
 	verb    string
 	line    string
-	lines   <-chan string
+	up      int
+	lines   <-chan streamLine
 }
 type actionStreamClosedMsg struct {
 	session int
@@ -156,6 +163,7 @@ type model struct {
 	selectedDebug  string
 	debugLoading   bool
 	actionSession  int
+	streamedLines  int // lines appended to the action popup by the current stream
 	viewport       viewport.Model
 }
 
@@ -845,6 +853,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if msg.session != m.actionSession {
 			return m, nil
 		}
+		m.streamedLines = 0
 		return m, tea.Batch(waitForActionLine(msg.session, msg.name, msg.verb, msg.lines), waitForActionDone(msg.session, msg.done))
 
 	case actionStreamLineMsg:
@@ -852,6 +861,11 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, nil
 		}
 		if m.popup.kind == actionOutputPopup {
+			// Replace lines the output redraws over (e.g. sm2 progress bars),
+			// never touching text that was in the popup before the stream.
+			up := min(msg.up, m.streamedLines)
+			m.popup.content = dropLastLines(m.popup.content, up)
+			m.streamedLines += 1 - up
 			if strings.TrimSpace(m.popup.content) == "" {
 				m.popup.content = msg.line
 			} else {
