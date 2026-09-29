@@ -10,6 +10,7 @@ type sm2Client interface {
 	StopAllOutput() (string, error)
 	DebugService(string) (string, error)
 	StartMode() string
+	RefreshVPNStatus() bool
 }
 
 type realSM2Client struct{}
@@ -28,6 +29,10 @@ func (realSM2Client) StartServiceOutputStream(name, port string, onLine func(str
 
 func (realSM2Client) StartMode() string {
 	return sm2.StartMode()
+}
+
+func (realSM2Client) RefreshVPNStatus() bool {
+	return sm2.RefreshVPNStatus()
 }
 
 func (realSM2Client) StopServiceOutput(name string) (string, error) {

@@ -70,6 +70,10 @@ func (f fakeSM2Client) StartMode() string {
 	return "ONLINE"
 }
 
+func (f fakeSM2Client) RefreshVPNStatus() bool {
+	return true
+}
+
 func TestPanelViewFitsRequestedDimensions(t *testing.T) {
 	m := testModel()
 

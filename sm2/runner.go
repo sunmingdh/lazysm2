@@ -4,7 +4,6 @@ import (
 	"bufio"
 	"fmt"
 	"io"
-	"net"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -44,18 +43,6 @@ var (
 	// Compiled once at init time; used in the hot path of every status refresh.
 	reStatusColumns = regexp.MustCompile(`\s*\|\s*`)
 	reLogFilesDir   = regexp.MustCompile(`(?m)^Log files in (.+):\s*$`)
-
-	// VPN interface name prefixes checked by isVPNConnected.
-	vpnPrefixes = []string{
-		"tun",   // OpenVPN, WireGuard (Linux)
-		"tap",   // OpenVPN tap mode
-		"ppp",   // PPTP, L2TP
-		"wg",    // WireGuard
-		"vpn",   // Generic VPN
-		"ipsec", // IPSec
-		"l2tp",  // L2TP
-		"utun",  // macOS VPN (utun0, utun1, …)
-	}
 )
 
 // GetStatus executes sm2 --status and sm2 --list concurrently and merges the results.
@@ -237,45 +224,6 @@ func runCommandStreamingOutput(cmd *exec.Cmd, onLine func(string)) (string, erro
 	return collected, scanErr
 }
 
-// isVPNConnected reports whether an active IPv4 VPN interface is present.
-func isVPNConnected() bool {
-	interfaces, err := net.Interfaces()
-	if err != nil {
-		return false
-	}
-
-	for _, iface := range interfaces {
-		name := strings.ToLower(iface.Name)
-		for _, prefix := range vpnPrefixes {
-			if !strings.HasPrefix(name, prefix) {
-				continue
-			}
-			isUp := (iface.Flags & net.FlagUp) != 0
-			isLoopback := (iface.Flags & net.FlagLoopback) != 0
-			if !isUp || isLoopback {
-				continue
-			}
-			addrs, err := iface.Addrs()
-			if err != nil {
-				continue
-			}
-			for _, addr := range addrs {
-				var ip net.IP
-				switch v := addr.(type) {
-				case *net.IPNet:
-					ip = v.IP
-				case *net.IPAddr:
-					ip = v.IP
-				}
-				if ip != nil && ip.To4() != nil {
-					return true
-				}
-			}
-		}
-	}
-	return false
-}
-
 // alwaysStartOffline reports whether START_SERVICE_OFFLINE is set to a truthy value.
 // Recognised values: 1, true, yes, on, y (case-insensitive).
 func alwaysStartOffline() bool {
@@ -288,14 +236,20 @@ func alwaysStartOffline() bool {
 }
 
 // StartMode returns a display string describing the current start mode.
+// It never blocks; it reports the result of the last RefreshVPNStatus call.
 func StartMode() string {
 	if alwaysStartOffline() {
 		return "OFFLINE Forced"
 	}
-	if isVPNConnected() {
+	connected, checked := cachedVPNStatus()
+	switch {
+	case !checked:
+		return "CHECKING VPN"
+	case connected:
 		return "ONLINE"
+	default:
+		return "OFFLINE no VPN"
 	}
-	return "OFFLINE no VPN"
 }
 
 // StopServiceOutput stops a service and returns its combined stdout/stderr output.

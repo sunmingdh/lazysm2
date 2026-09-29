@@ -14,7 +14,23 @@ const (
 	logPollInterval = 500 * time.Millisecond
 	initialLogLines = 200
 	maxLogLines     = 5000 // maximum lines retained in the log panel
+	vpnPollInterval = 30 * time.Second
 )
+
+// vpnCheckCommand runs the (potentially slow) VPN check off the UI goroutine.
+func vpnCheckCommand(client sm2Client) tea.Cmd {
+	return func() tea.Msg {
+		client.RefreshVPNStatus()
+		return vpnCheckedMsg{}
+	}
+}
+
+// scheduleVPNCheck re-runs the VPN check after vpnPollInterval.
+func scheduleVPNCheck(client sm2Client) tea.Cmd {
+	return tea.Tick(vpnPollInterval, func(time.Time) tea.Msg {
+		return vpnCheckCommand(client)()
+	})
+}
 
 func refreshStatusCommand(client sm2Client) tea.Cmd {
 	return func() tea.Msg {

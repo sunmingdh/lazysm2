@@ -31,6 +31,7 @@ var (
 
 type statusMessage struct{ message string }
 type errorMessage struct{ err error }
+type vpnCheckedMsg struct{}
 type statusRefreshedMsg struct {
 	status  sm2.Status
 	warning string
@@ -169,7 +170,7 @@ func initialModel() model {
 }
 
 func (m model) Init() tea.Cmd {
-	return refreshStatusCommand(m.sm2)
+	return tea.Batch(refreshStatusCommand(m.sm2), vpnCheckCommand(m.sm2))
 }
 
 func (m *model) updateServiceLists() {
@@ -831,6 +832,10 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		m.clampCursors()
 		return m.loadSelectedServiceDebug()
+
+	case vpnCheckedMsg:
+		// The header re-renders with the cached result; schedule the next check.
+		return m, scheduleVPNCheck(m.sm2)
 
 	case statusMessage:
 		m.statusMessage = msg.message
